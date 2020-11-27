@@ -13,7 +13,7 @@ goes in argv[0], the second in argv[1], and so on.  each time we add a token to 
 #define MAX_PATHS 64
 #define MAX_PATH_LEN 96
 #define WHITESPACE ".,\t\n"
-#define HISTORY_MAX_LEN 20     /* max number of arguments in the history */
+#define HISTORY_MAX_LEN 10     /* max number of arguments in the history */
 
 #ifdef NULL
 #define NULL ...
@@ -25,14 +25,16 @@ struct command_t {          /* struct is used to store a parsed command pipeline
     char *argv[MAX_ARGS];   /* arguments */
 };
 
-struct command {
-    int cmd_count;          /* struct is used to store a command pipeline */
-    struct command *cmds[]; /* number of commands */
-};
-
-int clear_hst(void);
-
-int parseCommand(char *, struct command_t *);
-
-}
+void printPrompt();
+void readCommand(char* commandLine);
+int parseCommand(char *commandLine,command_t* command);
+void executePipe(command_t* command,int i,int noOfCommands,int** pipes);
+void executeFile(command_t* command,int i,char** parsedfile,int** pipes,int noOfCommands);
+int parsePipe(char *commandLine,char** parsedpipe);
+void parseSpace(char* file_Name_With_LeadingSpace, char** parsedfile);
+int parsePath(char *dirs[]);
+char* lookupPath(char**argv,char**dirs);
+bool checkfile (char* commandLine);
+void parseFile(char *commandLine,char** parsedfile);
+void freeCommand(command_t *cmd);
 
