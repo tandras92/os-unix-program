@@ -9,7 +9,17 @@
 #include "minishell.h"
 
 
-static char *user_input         /* input entered by the user */
+static char *user_input;         /* input entered by the user */
+
+int main (int argc, char *argv[]) {
+ /* read command line parameters */
+        if (argc != 2) {
+            fprintf(stderr, "Usage: launch <launch_set_filename>\n");
+            return EXIT_SUCCESS;
+        }
+
+        return shell_commands(argv[1]);
+}
 
 /* Parses a single command into a command struct */
 struct command *parse_command(char *user_input, command_t *cmd) {
@@ -90,7 +100,6 @@ int shell_commands(const char *filename) {
 }
 
 
-
 void freeCommand(command_t *cmd) {
     int i;
     for (i = 0;((i < cmd->argc) && (cmd->argv[i] != NULL)); i++) {
@@ -98,6 +107,7 @@ void freeCommand(command_t *cmd) {
     }
     free(cmd->name);
 }
+
 
 void printPrompt() {
 
@@ -113,13 +123,4 @@ int parsePath(char *dirs[]) {
 
 char *lookupPath(char **argv, char **dir) {
 
-}
-int main (int argc, char *argv[]) {
- /* read command line parameters */
-        if (argc != 2) {
-            fprintf(stderr, "Usage: launch <launch_set_filename>\n");
-            return EXIT_SUCCESS;
-        }
-
-        return shell_commands(argv[1]);
 }

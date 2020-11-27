@@ -27,7 +27,6 @@ struct command_t {          /* struct is used to store a parsed command pipeline
 
 void printPrompt();
 void readCommand(char* commandLine);
-int parseCommand(char *commandLine,command_t* command);
 void executePipe(command_t* command,int i,int noOfCommands,int** pipes);
 void executeFile(command_t* command,int i,char** parsedfile,int** pipes,int noOfCommands);
 int parsePipe(char *commandLine,char** parsedpipe);
