@@ -14,6 +14,9 @@ goes in argv[0], the second in argv[1], and so on.  each time we add a token to 
 #define MAX_PATH_LEN 96
 #define WHITESPACE ".,\t\n"
 #define HISTORY_MAX_LEN 10     /* max number of arguments in the history */
+#define PARSE "|\n"
+#define FILEPARSE ">"
+#define Exit "exit"
 
 #ifdef NULL
 #define NULL ...
