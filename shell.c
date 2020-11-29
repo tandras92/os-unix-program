@@ -1,126 +1,199 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <errno.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <ctype.h>
-#include "minishell.h"
+/*
+ * This is a very minimal shell.  It is only required to find an executable
+ * in the PATH, then load it and execute it (using execv).  Since it uses
+ * "." (dot) as a separator, it cannot handle file names like "minishell.h"
+ * The focus on this exercise is to use fork, PATH variables, and exec.
+ * This code can be extended by doing the exercise at the end of Chapter 9.
+ *
+ */
+#include	<stdio.h>
+#include    <stdlib.h>
+#include	<sys/types.h>
+#include	<sys/wait.h>
+#include	<string.h>
+#include	<unistd.h>
+#include	"minishell.h"
 
 
-static char *user_input;         /* input entered by the user */
+char *lookupPath(char **, char **);
+int parseCommand(char *, struct command_t *);
+int parsePath(char **);
+void printPrompt();
+void readCommand(char *);
 
-int main (int argc, char *argv[]) {
- /* read command line parameters */
-        if (argc != 2) {
-            fprintf(stderr, "Usage: launch <launch_set_filename>\n");
-            return EXIT_SUCCESS;
+char promptString[] = "simple unix shell >";
+char commandLine[LINE_LEN];
+
+int main() {
+    char *pathv[MAX_PATHS];
+    int numPaths;
+    int i, j, len;
+    int chPID;		// Child PID
+    int stat;		// Used by parent wait
+    pid_t thisChPID;
+    struct command_t command;
+
+// Shell initialization
+    for(i=0; i<MAX_ARGS; i++)
+        command.argv[i] = (char *) calloc(sizeof(MAX_ARGS), MAX_ARG_LEN);
+    parsePath(pathv);
+
+// Main loop
+    while(TRUE) {
+        printPrompt();
+
+    // Read the command line and parse it
+        readCommand(commandLine);
+        if(
+            (strcmp(commandLine, "exit") == 0) ||
+            (strcmp(commandLine, "quit") == 0)
+          ) break;	// Quit the shell
+        parseCommand(commandLine, &command);
+#ifdef DEBUG
+            printf("... returned from parseCommmand ...\n");
+            for(i=0; i<command.argc; i++)
+	            printf("	argv[%d] = %s\n", i,  command.argv[i]);
+#endif
+
+    // Get the full pathname for the file
+        command.name  = lookupPath(command.argv, pathv);
+
+#ifdef DEBUG
+        printf("... returned from lookupPath ...\n");
+        printf("	command path = %s\n", command.name);
+        for(i=0; i<command.argc; i++)
+	    printf("	argv[%d] = %s\n", i,  command.argv[i]);
+#endif
+        if(command.name == NULL) {
+            fprintf(stderr, "Command %s not found\n", command.argv[0]);
+            continue;
         }
 
-        return shell_commands(argv[1]);
-}
+    // Create a process to execute the command
+        if((chPID = fork()) == 0) {
+        //  This is the child
+#ifdef DEBUG
+            printf("child executing: %s\n", command.name);
+            for(i=1; i<command.argc; i++)
+	            printf("	argv[%d] = %s\n", i,  command.argv[i]);
+#endif
+            execv(command.name, command.argv);
+       }
 
-/* Parses a single command into a command struct */
-struct command *parse_command(char *user_input, command_t *cmd) {
-    int argc = 0;
-    char *token;
+// Wait for the child to terminate
+#ifdef DEBUG
+        printf("Parent waiting\n");
+#endif
 
-/* Calloc allocates the memory and initializes the allocated memory block to zero */
-    struct command_t *cmd = calloc(sizeof(struct command_t) + MAX_ARGS * sizeof(char *), 1);
+        thisChPID = wait(&stat);
+  }
 
-    token = strtok(&user_input, WHITESPACE);
-
-    /* use EXIT_FAILURE -- exit(1) for code portability */
-        if (cmd == NULL) {
-            fprintf(stderr, "Shell:  Error allocating memory for argument \"%s\": %s\n", return EXIT_FAILURE)
-        }
-
-    while (token != NULL && argc < MAX_ARGS) {
-        cmd->argv[argc++] = token;
-        token = strtok(NULL, WHITESPACE);
-    }
-    cmd->name = cmd->argv[0];
-    cmd->argc = argc;
-    return cmd;
-}
-
-int shell_commands(const char *filename) {
-        int i;
-        int pid, numChildren;
-        int status;
-        FILE *file;
-        char cmdLine[MAX_LINE_LEN];
-        struct command_t command;
-
-        /* Open a file that contains a set of commands */
-        file = fopen(filename, "r");
-        if (!file) {
-            fprintf(stderr, "launch: Error opening file %s: %s\n", filename, strerror(errno));
-            return EXIT_FAILURE;
-        } else if (ferror(file)) {
-            perror("launch: Error while reading from file.");
-            return EXIT_FAILURE;
-        }
-
-        /* Process each command in the launch file */
-        numChildren = 0;
-        pid = fork();
-        while (fgets (cmdLine, MAX_LINE_LEN, file) != NULL) {
-            parse_command(cmdLine, &command);
-            command.argv[command.argc] = NULL;
-
-            /* Create a child process to execute the command */
-            if (pid == 0) {
-                execv(command.name, command.argv);         /* execute child command */
-                fprintf(stderr, "launch: Error executing command '%s': %s\n", command.name, strerror(errno));
-                return EXIT_FAILURE;
-            } else if (pid < 0) {
-                fprintf(stderr, "launch: Error while forking: %s\n", strerror(errno));
-                return EXIT_FAILURE;
-            }
-            numChildren++;      /* Parent continuing to the next command in the file */
-        }
-
-        printf("\n\nlaunch: Launched %d commands\n", numChildren);
-
-        /* Should free dynamic storage in command data structure */
-        for(i = 0; i < numChildren; i++) {
-            pid = wait(&status);
-
-            if (pid < 0) {
-                fprintf(stderr, "launch: Error while waiting for child to terminate\n");
-                return EXIT_FAILURE;
-            } else {
-                printf("launch: Child %d terminated successfully\n", pid);
-            }
-        }
-        printf("\n\nlaunch: Terminating successfully\n");
-        return EXIT_SUCCESS;
+// Shell termination
 }
 
 
-void freeCommand(command_t *cmd) {
+char *lookupPath(char **argv, char **dir) { 
+// This function inspired by one written by Sam Siewert in Spring 1996
     int i;
-    for (i = 0;((i < cmd->argc) && (cmd->argv[i] != NULL)); i++) {
-        free(cmd->argv[i]);
+    char *result;
+    char pName[MAX_PATH_LEN];
+
+// Check to see if file name is already an absolute path name
+    if(*argv[0] == '/') {
+        result = (char *) malloc(strlen(argv[0])+1);
+        strcpy(result, argv[0]);
+        return result;
     }
-    free(cmd->name);
+
+// Look in PATH directories
+// This code does not handle the case of a relative pathname
+    for(i = 0; i < MAX_PATHS; i++) {
+        if(dir[i] == NULL) break;
+        strcpy(pName, dir[i]);
+        strcat(pName, "/");
+        strcat(pName, argv[0]);
+#ifdef DEBUG
+        printf("lookupPath: Checking for %s\n", pName);
+#endif
+        if(access(pName, X_OK | F_OK) != -1) {
+        // File found
+#ifdef DEBUG
+            printf("lookupPath: Found %s in %s (full path is %s)\n",
+			argv[0], dir[i], pName);
+#endif
+            result = (char *) malloc(strlen(pName)+1);
+            strcpy(result, pName);
+            return result;		// Return with success
+        }
+    }
+
+// File name not found in any path variable
+    fprintf(stderr, "%s: command not found\n", argv[0]);
+    return NULL;
+
+}
+
+
+int parseCommand(char *cLine, struct command_t *cmd) {
+// Determine command name and construct the parameter list
+
+    int argc;
+    int i, j;
+    char **clPtr;
+
+// Initialization
+    clPtr = &cLine;
+    argc = 0;
+
+// Get the command name and parameters
+// This code does not handle multiple WHITESPACE characters
+    while((cmd->argv[argc++] = strsep(clPtr, WHITESPACE)) != NULL) ;
+
+    cmd->argv[argc--] = '\0';	// Null terminated list of strings
+    cmd->argc = argc;
+
+    return  1;	
+}
+
+
+int parsePath(char *dirs[]) {
+// This routine based on one written by Panos Tsirigotis, Spring 1989
+	int i;
+	char *pathEnvVar;
+	register char *thePath, *oldp;
+
+	for(i=0; i<MAX_ARGS; i++)
+		dirs[i] = NULL;
+	pathEnvVar = (char *) getenv("PATH");
+	thePath = (char *) malloc(strlen(pathEnvVar) + 1);
+	strcpy(thePath, pathEnvVar);
+
+	i = 0;
+	oldp = thePath;
+	for(;; thePath++) {
+		if((*thePath == ':') || (*thePath == '\0')) {
+			dirs[i] = oldp;
+			i++;
+			if(*thePath == '\0') break;
+			*thePath = '\0';
+			oldp = thePath + 1;
+		}
+	}
+
+#ifdef DEBUG
+	printf("Directories in PATH variable\n");
+	for(i=0; i<MAX_PATHS; i++)
+		if(dirs[i] != '\0')
+			printf("	Directory[%d]: %s\n", i, dirs[i]);
+#endif
+
 }
 
 
 void printPrompt() {
-
+    printf("%s ", promptString);
 }
 
-void readCommand(char) {
-
-}
-
-int parsePath(char *dirs[]) {
-
-}
-
-char *lookupPath(char **argv, char **dir) {
-
+void readCommand(char *buffer) {
+    fgets(commandLine, LINE_LEN, stdin);
 }
