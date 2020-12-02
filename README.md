@@ -24,6 +24,7 @@ Run `git clone https://github.com/tandras92/os-unix-program.git` or download the
 * ls
 * cat `<filename>`
 * exit
+* help
 
 ## Make Commands
 In the terminal, cd to the directory that contains the program and run the below commands.
