@@ -9,14 +9,15 @@ Before you continue, make sure you have me the following requirements:
   * An IDE such as Visual Studio Code (If you're on Windows)
   * Command Prompt/Terminal
   * UNIX OS
+  * gcc compiler
   
 ## Program Contents
   * `Makefile` is a file containing shell commands.  When user types `make` in the terminal, all the commands in the makefile will be executed.
-  * `minishell.h`
-  * `shell.c`
+  * `minishell.h` is a header file that identifies dependencies
+  * `shell.c` 
   
 ## How to Install
-
+Run `git clone https://github.com/tandras92/os-unix-program.git` or download the application.
 
 ## C Commands Utilized
 | Command | Description |
@@ -25,9 +26,24 @@ Before you continue, make sure you have me the following requirements:
 | Strtok  | splits a string by some delimiter |
 | EXIT_FAILURE | indicates unsuccessful termination |
 
+## Built-in Commands
+* cd `<directoryname>`
+* ls
+* cat `<filename>`
+* exit
 
-## Shell Commands
+## Make Commands
+In the terminal, cd to the directory that contains the program and run the below commands.
+
+| Command | Description |
+|-------- | ----------- |
+| make    | compiles the program |
+| make run| runs the program |
+| make clean | removes the `shell` file |
 
 ## References
+[Operating Systems by Gary Nutt](https://www.amazon.com/Operating-Systems-3rd-Gary-Nutt/dp/0201773449)
+
+[Makefile Tutorial](https://makefiletutorial.com/)
 
 
